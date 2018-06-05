@@ -10,3 +10,4 @@ module.exports ={
 knexinst('game_details').select('')
 .then((data)=>{ console.log(data);
 });
+///changes
