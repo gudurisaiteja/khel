@@ -5,8 +5,8 @@ const config = require('../../config/config');
 
 // sample user, used for authentication
 const user = {
-  username: 'react',
-  password: 'express'
+  username: 'testinput3',
+  password: 'testpass3'
 };
 
 /**
@@ -25,7 +25,8 @@ function login(req, res, next) {
     }, config.jwtSecret);
     return res.json({
       token,
-      username: user.username
+      username: user.username,
+      userid:user._id
     });
   }
 

@@ -1,15 +1,20 @@
 const User = require('./user.model');
+const dbconn=require('./Dbconn.js');
+var knexinst=dbconn.knexinst;
+var bookshelf = require('bookshelf')(knexinst);
+
+
+
 
 /**
  * Load user and append to req.
  */
-function load(req, res, next, id) {
-  User.get(id)
-    .then((user) => {
-      req.user = user; // eslint-disable-line no-param-reassign
-      return next();
-    })
-    .catch(e => next(e));
+
+function load(req, res, next, username) {
+ 
+  knexinst('users').where({username:username}).select('username','mobilenumber')
+  .then((data)=>res.send(data))
+  .catch(e => next(e));
 }
 
 /**
@@ -17,7 +22,11 @@ function load(req, res, next, id) {
  * @returns {User}
  */
 function get(req, res) {
-  return res.json(req.user);
+  // return res.json(req.user);
+  knexinst('users').where({id:req.params.userId}).select('id','username','mobilenumber')
+  .then((data)=>res.send(data))
+  .catch(e => next(e));
+
 }
 
 /**
@@ -27,15 +36,36 @@ function get(req, res) {
  * @returns {User}
  */
 function create(req, res, next) {
-  const user = new User({
+  console.log();
+  
+  const user = {
     username: req.body.username,
-    mobileNumber: req.body.mobileNumber
-  });
+    mobilenumber: req.body.mobileNumber,
+    password:req.body.password,
 
-  user.save()
-    .then(savedUser => res.json(savedUser))
-    .catch(e => next(e));
-}
+    };
+  console.log('in create');
+  
+    knexinst('users').insert(user)
+    .then((a)=>{
+      console.log('in insert',a);
+      
+      res.send('inserted');
+
+    })
+    .catch((e) => {
+      console.error(e);
+      
+      next();
+    }
+    );
+
+    //res.send('ok');
+    
+  }
+  
+  
+  
 
 /**
  * Update existing user
@@ -43,14 +73,21 @@ function create(req, res, next) {
  * @property {string} req.body.mobileNumber - The mobileNumber of user.
  * @returns {User}
  */
+
 function update(req, res, next) {
   const user = req.user;
-  user.username = req.body.username;
-  user.mobileNumber = req.body.mobileNumber;
+  console.log("update req.user",req.user);
+  var toUpdate=req.body;
+  knexinst('users')
+  .where({username:req.user.username})
+  .update(toUpdate)
+  .then((data)=>res.send('updated'))
+  .catch(e=>next(e));
 
-  user.save()
-    .then(savedUser => res.json(savedUser))
-    .catch(e => next(e));
+    //   console.log('user',toUpdate);
+    
+    // res.send('in update');
+ 
 }
 
 /**
@@ -60,10 +97,14 @@ function update(req, res, next) {
  * @returns {User[]}
  */
 function list(req, res, next) {
-  const { limit = 50, skip = 0 } = req.query;
-  User.list({ limit, skip })
-    .then(users => res.json(users))
-    .catch(e => next(e));
+  // const { limit = 50, skip = 0 } = req.query;
+  // User.list({ limit, skip })
+  //   .then(users => res.json(users))
+  //   .catch(e => next(e));
+
+  knexinst.select('username','mobilenumber').from('users')
+  .then((data)=>res.send(data))
+  .catch(e => next(e));
 }
 
 /**
@@ -72,9 +113,16 @@ function list(req, res, next) {
  */
 function remove(req, res, next) {
   const user = req.user;
-  user.remove()
-    .then(deletedUser => res.json(deletedUser))
-    .catch(e => next(e));
+ 
+  console.log(typeof(req.params.userId));
+  knexinst('users').where('id', parseInt(req.params.userId))
+    .del()
+    .then((data)=>{ 
+      console.log('Here');
+      res.status(200).json(data); 
+     })
+    .catch(e=>next(e));
+   //res.send('in delete'); 
 }
 
-module.exports = { load, get, create, update, list, remove };
+module.exports = { load, get, create, update, list, remove,knexinst };
