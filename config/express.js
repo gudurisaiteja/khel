@@ -49,6 +49,11 @@ if (config.env === 'development') {
 // mount all routes on /api path
 app.use('/api', routes);
 
+// app.use('/api/test/:userid', function(req, res){
+//   console.log("hit!");
+//   return res.send("done!")
+// })
+
 // if error is not an instanceOf APIError, convert it.
 app.use((err, req, res, next) => {
   if (err instanceof expressValidation.ValidationError) {
