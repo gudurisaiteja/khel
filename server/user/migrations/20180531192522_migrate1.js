@@ -13,7 +13,7 @@ exports.up = function (knex, Promise) {
             t.increments('player_id').unsigned().primary();
             t.string('name', 50).notNull();
             t.string('email', 50).notNull();
-            t.integer('mobile').notNull();
+            t.string('mobile',13).notNull();
             t.string('encryptedpassword', 50).notNull();
             t.integer('group_id').references('group_details.group_id');
             t.string('gender', 10).notNull();
@@ -45,9 +45,10 @@ exports.up = function (knex, Promise) {
         knex.schema.createTable('interest_details', function (t) {
             t.integer('player_id').references('player_details.player_id');
             t.integer('game_id').references('game_details.game_id');
-            t.boolean('interested_in_singles').notNull();
-            t.boolean('interested_in_doubles').notNull();
-            t.boolean('interested_in_mixeddoubles').notNull();
+            t.integer('category_id').references('game_category_details.category_id');
+            // t.boolean('interested_in_singles').notNull();
+            // t.boolean('interested_in_doubles').notNull();
+            // t.boolean('interested_in_mixeddoubles').notNull();
         }),
         knex.schema.createTable('gallery', function (t) {
             t.string('photo').unsigned().primary();
