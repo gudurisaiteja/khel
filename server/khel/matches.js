@@ -5,39 +5,39 @@ var Promise = require('bluebird')
 
 function Match_Schedule() {
   Load_Data_From_Database()
-.then(function(player_details)
-{
-  return _.groupBy(player_details,'group_id')
-})
-.then(function(sorted_by_groups)
-{
+// .then(function(player_details)
+// {
+//   return _.groupBy(player_details,'group_id')
+// })
+// .then(function(sorted_by_groups)
+// {
    
-console.log(_.pick(sorted_by_groups, '1'));
-  //console.log(sorted_by_groups)
-  // console.log(_.groupBy(sorted_by_groups,'game_id'))
-})
+// console.log(_.pick(sorted_by_groups, '1'));
+//   //console.log(sorted_by_groups)
+//   // console.log(_.groupBy(sorted_by_groups,'game_id'))
+// })
 
 
-}
-//     .then(function (player_details) {
-//     //  console.log(player_details)
-//       knex('game_category_details')
-//         .select()
-//         .then(function (Category) {
-//             Promise.each(Category, function (Category_ID) {  // [{catID, gameID, catName}]
-//               Promise.map(['M', 'F'], function (Gender) { // ['M','F']
-//                 return _.filter(player_details, // [{playerID, groupID, catID, gameID, gender}]
-//                   function (p) {
-//                     return ((p.category_id == Category_ID.category_id) 
-//                     && (p.gender == Gender))
-//                   })
-//               }).then(function(data){
-//                 console.log(data, 'DATA');
-//               })
-//             })
-//         })
-//     })
 // }
+    .then(function (player_details) {
+    //  console.log(player_details)
+      knex('game_category_details')
+        .select()
+        .then(function (Category) {
+            Promise.each(Category, function (Category_ID) {  // [{catID, gameID, catName}]
+              Promise.map(['M', 'F'], function (Gender) { // ['M','F']
+                return _.filter(player_details, // [{playerID, groupID, catID, gameID, gender}]
+                  function (p) {
+                    return ((p.category_id == Category_ID.category_id) 
+                    && (p.gender == Gender))
+                  })
+              }).then(function(data){
+                console.log(data, 'DATA');
+              })
+            })
+        })
+    })
+}
 
 
 
