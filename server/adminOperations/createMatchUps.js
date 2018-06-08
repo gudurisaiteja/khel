@@ -1,74 +1,165 @@
 const dbconn = require('C:/Users/akhilesh.kura/express-mongoose-es6-rest-api/server/user/Dbconn.js');
 var knexinst = dbconn.knexinst;
 var bookshelf = require('bookshelf')(knexinst);
-let lodash = require('lodash');
+let _ = require('lodash');
 let shuffle = require('shuffle-array');
 //var collections=require('collectionsjs');
 
 
 var match_up = function (categoryid) {
     // getAllGroupIds()
-    var groups = []
+    // let groups = []
     let playersOrderedInGroup = []
     var number_of_players, game_id;
 
 
+    return getCategoryDetails(categoryid)
+        .then(function (data) {
+            //numberOfPlayers = data;
+            //Retriving no.of.players and game id for the given categoryid and retrieving groups
+            console.log('data', data);
 
-    knexinst('game_category_details')
+            number_of_players = data.no_of_players;
+            game_id = data.game_id;
+            console.log(game_id);
+            return getAllGroupIds();
+        })
+        .map(function (group) {
+            //retrieving  groups and scheduling
+            let group_id = group.group_id;
+            return getPlayerIntrestDetailsByGameIdAndGroupId(categoryid,group_id);
+        })
+        .then(function (data) {
+
+            // console.log('playersOrderedInGroup originally:', playersOrderedInGroup);
+            return _.map(data, function (playersList) {
+                removePlayers(playersList, number_of_players);
+                return playersList;
+            });
+
+        })
+        .map(function(data){
+           return shuffleArray(data);
+
+        })
+        .then(function (data) {
+            console.log('playersOrderedInGroup after shuffle:', data);
+            // for (var i = 0; i < playersOrderedInGroup.length; i++) {
+            //         makeGroupMatchUps(playersOrderedInGroup[i], number_of_players)
+            // }
+
+
+
+        });
+}
+
+var makeGroupMatchUps = function (playersInGroupList, number_of_players) {
+    let Matched = 1;
+    for (var i = 0; i < playersInGroupList.length; i = i + j) {
+        Matched = 0;
+        let testVar = getMaxMatchId(playersInGroupList[0].category_id);
+        console.log('testvar:', testVar);
+
+        //  for(let j=0;j<number_of_players;j++)
+        //  {
+
+
+        //  }
+        //  if(Matched==0)
+        //  {
+
+        //  }
+
+    }
+}
+var getMaxMatchId = function (category_id) {
+    return Promise.all([
+
+        knexinst('match_details')
+            .select('match_id')
+            .max('match_id')
+            .groupBy('category_id')
+            .where('category_id', category_id)
+
+    ])
+        .then(function (data) {
+            console.log('in getmaxid,,data', data);
+            return data;
+        })
+
+
+}
+let getCategoryDetails = function (categoryid) {
+    return knexinst('game_category_details')
         .select('no_of_players', 'game_id')
         .where({ category_id: categoryid })
         .then(function (data) {
             //numberOfPlayers = data;
             //Retriving no.of.players and game id for the given categoryid and retrieving groups
             console.log('data', data);
-
-            number_of_players = data[0].no_of_players;
-            game_id = data[0].game_id;
-            console.log(game_id);
-            return getAllGroupIds();
-        })
-        .then(function (groupids) {
-            //retrieving  groups and scheduling
-            groups = lodash.map(groupids, 'group_id');
-            console.log('groups', groups);
-
-            return Promise.all(groups.map(function (id) {
-                return knexinst.select('player_details.player_id', 'group_id', 'game_id', 'interest_details.category_id')
-                    .from('player_details')
-                    .rightJoin('interest_details', 'player_details.player_id', 'interest_details.player_id')
-                    .where({ group_id: id, game_id: game_id })
-                    .then(function (data) {
-                        if (data.length > 1) { playersOrderedInGroup.push(data); }
-
-                    })
-            }));
-        })
-        .then(function (data) {
-
-            console.log('playersOrderedInGroup originally:', playersOrderedInGroup);
-            return Promise.all(playersOrderedInGroup.map(function(arr){shufflearray(arr)}));
-            
-        })
-        .then(function (data) {
-
-            console.log('playersOrderedInGroup after shuffle:', playersOrderedInGroup);
-
+            return data[0];
+            // number_of_players = data[0].no_of_players;
+            // game_id = data[0].game_id;
         });
+}
+
+var getAllGroupIds = function () {
+
+    return knexinst('group_details')
+        .select('group_id');
+};
+
+var removePlayers = function (playersList, no_of_players) {
+
+    var toRemove
+    if (playersList.length > (no_of_players * 4)) {
+        toRemove = (playersList.length % (no_of_players * 4));
+        // console.log('removeplayer, toremove', toRemove, no_of_players, playersList.length);
+
+
+        for (let i = 0; i < toRemove; i++) {
+            playersList.pop();
+        }
     }
-    var getAllGroupIds = function () {
-
-        return knexinst('group_details')
-            .select('group_id');
-    };
+    else {
+        toRemove = (playersList.length % (no_of_players * 2));
+        // console.log('removeplayer, toremove', toRemove, no_of_players, playersList.length);
 
 
-    let shufflearray = function (array) {
-    //    console.log('shuffle');
-       
-        return shuffle(array);
-    };
+        for (let i = 0; i < toRemove; i++) {
+            playersList.pop();
+        }
 
-    match_up(11);
+    }
+
+
+}
+/**
+ * 
+ * @param {*} group_id 
+ * @param {*} game_id 
+ */
+let getPlayerIntrestDetailsByGameIdAndGroupId = function (category_id, group_id) {
+
+    return knexinst.select('player_details.player_id', 'group_id', 'game_id', 'interest_details.category_id')
+        .from('player_details')
+        .innerJoin('interest_details', 'player_details.player_id', 'interest_details.player_id')
+        .where({ category_id: category_id, group_id: group_id })
+        .then(function (data) {
+            return data;
+        });
+}
+
+/**
+ * 
+ * @param {*} array 
+ */
+let shuffleArray = function (array) {
+    console.log('shuffle');
+    return shuffle(array);
+};
+
+match_up(11);
 
 
 

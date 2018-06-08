@@ -34,6 +34,7 @@ exports.up = function (knex, Promise) {
             t.integer('category_id').references('game_category_details.category_id');
             t.integer('team1_id').references('team_details.team_id');
             t.integer('team2_id').references('team_details.team_id');
+            t.integer('stage').notNull();
             t.dateTime('date_and_time').notNull();
             t.integer('result').notNull();
         }),
