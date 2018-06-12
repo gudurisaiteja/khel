@@ -27,7 +27,7 @@ var match_up = function (categoryid) {
         .map(function (group) {
             //retrieving  groups and scheduling
             let group_id = group.group_id;
-            return getPlayerIntrestDetailsByGameIdAndGroupId(categoryid,group_id);
+            return getPlayerInterestDetailsByGameIdAndGroupId(categoryid, group_id);
         })
         .then(function (data) {
 
@@ -37,55 +37,122 @@ var match_up = function (categoryid) {
                 return playersList;
             });
 
-        })
-        .map(function(data){
-           return shuffleArray(data);
 
         })
+        .map(function (data) {
+            return shuffleArray(data);
+
+        })
+
         .then(function (data) {
             console.log('playersOrderedInGroup after shuffle:', data);
+            playersOrderedInGroup = data;
+
             // for (var i = 0; i < playersOrderedInGroup.length; i++) {
-            //         makeGroupMatchUps(playersOrderedInGroup[i], number_of_players)
-            // }
+                playersOrderedInGroup.map(function name(playersInGroup) {
+                    if (playersInGroup.length > number_of_players) {
+                        makeGroupMatchUps(playersInGroup, number_of_players)
+                            .then(function (data) {
+                                console.log('');
+        
+        
+                            })
+                    }
+                    else{
+        
+                        /* against groups logic */
+                    }
+                })
+           
+            //}
 
 
 
         });
 }
 
-var makeGroupMatchUps = function (playersInGroupList, number_of_players) {
+var makeGroupMatchUps = function (playersInGroup, number_of_players) {
     let Matched = 1;
-    for (var i = 0; i < playersInGroupList.length; i = i + j) {
-        Matched = 0;
-        let testVar = getMaxMatchId(playersInGroupList[0].category_id);
-        console.log('testvar:', testVar);
+    let currentMatchId;
+    let team_id;
+    return getMaxMatchId(playersInGroup[0].category_id)
+        .then(function (max_id) {
+            currentMatchId = max_id + 1;
+            return getMaxTeamId();
 
-        //  for(let j=0;j<number_of_players;j++)
-        //  {
-
-
-        //  }
-        //  if(Matched==0)
-        //  {
-
-        //  }
-
-    }
-}
-var getMaxMatchId = function (category_id) {
-    return Promise.all([
-
-        knexinst('match_details')
-            .select('match_id')
-            .max('match_id')
-            .groupBy('category_id')
-            .where('category_id', category_id)
-
-    ])
-        .then(function (data) {
-            console.log('in getmaxid,,data', data);
-            return data;
         })
+        .then(function(max_team_id){
+            current_team_id=max_team_id+1;
+            Matched=0;
+            let team_id1=0,team_id2=0;
+
+            Promise.map(_.chunk(playersInGroup,number_of_players*2),function(data){
+                            _.chunk(data,no_of_players,function(teams){
+                              teams[0].map(insertIntoTeamDetails({team_id:current_team_id, player_id: playersInGroup[j].player_id }))
+                            })
+
+            })
+
+            for(let i = 0; i < playersInGroup.length; i = i + number_of_players) {
+             
+                for (let j = i; j < i + number_of_players; j++) {
+                     
+                     insertIntoTeamDetails({team_id:current_team_id, player_id: playersInGroup[j].player_id });
+                     if(team_id1==0){ team_id1=current_team_id; }
+                     else if (team_id2==0){ team_id2=current_team_id; }
+
+                }
+               if(Matched==0){ current_team_id=current_team_id+1 }
+               else{
+                insertIntoMatchDetails(currentMatchId,playersInGroup[i].category_id,team_id1,team_id2,Date.now(),'NA',getMaxStage(category_id)+1);
+                Matched=1;
+               }
+              
+              
+               
+            }
+        });
+
+}
+let getMaxStage=function(category_id){
+
+ return knexinst('match_details')
+ .max('stage')
+ .where('category_id',category_id);
+}
+let insertIntoMatchDetails=function(details){
+    knexinst('match_details').insert(details);
+
+}
+
+let insertIntoTeamDetails=function(teamDetails){
+
+    knexinst('team_details')
+    .insert(teamDetails);
+
+}
+let getMaxMatchId = function (category_id) {
+
+
+    return knexinst('match_details')
+        .max('match_id')
+        .groupBy('category_id')
+        .where('category_id', category_id)
+
+
+    // .then(function (data) {
+    //     console.log('in getmaxid,,data', data);
+    //     return data;
+    // })
+
+
+}
+let getMaxTeamId = function () {
+
+
+    return knexinst('team_details')
+        .max('team_id')
+   
 
 
 }
@@ -95,7 +162,7 @@ let getCategoryDetails = function (categoryid) {
         .where({ category_id: categoryid })
         .then(function (data) {
             //numberOfPlayers = data;
-            //Retriving no.of.players and game id for the given categoryid and retrieving groups
+            //Retrieving no.of.players and game id for the given categoryid and retrieving groups
             console.log('data', data);
             return data[0];
             // number_of_players = data[0].no_of_players;
@@ -115,21 +182,14 @@ var removePlayers = function (playersList, no_of_players) {
     if (playersList.length > (no_of_players * 4)) {
         toRemove = (playersList.length % (no_of_players * 4));
         // console.log('removeplayer, toremove', toRemove, no_of_players, playersList.length);
-
-
-        for (let i = 0; i < toRemove; i++) {
-            playersList.pop();
-        }
     }
     else {
         toRemove = (playersList.length % (no_of_players * 2));
         // console.log('removeplayer, toremove', toRemove, no_of_players, playersList.length);
 
-
-        for (let i = 0; i < toRemove; i++) {
-            playersList.pop();
-        }
-
+    }
+    for (let i = 0; i < toRemove; i++) {
+        playersList.pop();
     }
 
 
@@ -139,7 +199,8 @@ var removePlayers = function (playersList, no_of_players) {
  * @param {*} group_id 
  * @param {*} game_id 
  */
-let getPlayerIntrestDetailsByGameIdAndGroupId = function (category_id, group_id) {
+
+let getPlayerInterestDetailsByGameIdAndGroupId = function (category_id, group_id) {
 
     return knexinst.select('player_details.player_id', 'group_id', 'game_id', 'interest_details.category_id')
         .from('player_details')
@@ -162,7 +223,12 @@ let shuffleArray = function (array) {
 match_up(11);
 
 
+/*
+Worked on Schedule Algorithm 
+   -fetched the required dat aaccording to groups
 
+
+*/
 
 
 
