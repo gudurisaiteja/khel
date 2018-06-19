@@ -1,149 +1,153 @@
-const knex = require('./Postgres_player.js').knex;
+const knex = require('./Knex_Configurations.js').knex;
 const _ = require('lodash');
-const Promise = require('bluebird')
+const Promise = require('bluebird');
 
-var Category_Info;
-var Team_Id = 0;
-var player_team_details_insert_query = "insert into player_team_details values";
-var team_details_insert_query = "insert into team_details values";
-var query = "insert into match_details(category_id,team1_id,team2_id) values";
-var query1 = " ";
+let categoryInfo;
+let teamID = 0;
+let playerTeamDetailsInsertQuery = 'insert into player_team_details values';
+let teamDetailsInsertQuery = 'insert into team_details values';
+let query = 'insert into match_details(category_id,team1_id,team2_id) values';
+let query1 = ' ';
 
-Category_Details()
-    .then(function () { // returns game categories from game_category_details table)
-        return Categorize();
+// Function Calling in sequence of execution
+categoryDetails() // Returns records from game_category
+    .then(() => { // returns game categories from game_category_details table)
+        return categorizePlayers(); // returns players with common interests
     })
-    .then(function () {
-        return Insert_Player_Team_Details();
+    .then(() => {
+        return insertIntoPlayerTeamDetails();
     })
-    .then(function () {
-        return Fill_Match_Details();
+    .then(() => {
+        return fillMatchDetailsQuery();
     })
-    .then(function () {
-        return Insert_Match_Details();
-    })
+    .then(() => {
+        return insertIntoMatchDetails();
+    });
 
-function Categorize() { // Groups players with common interests together
+function categorizePlayers() { // Groups players with common interests together
     return knex('group_details')  // Select unique group ids
         .select('group_id')
-        .then(function (group_ids) {
-            let groups = _.map(group_ids, 'group_id');
+        .then(function (groupIDs) {
+            const groups = _.map(groupIDs, 'group_id');
             return Promise.map(groups, function (group) { // Get player details, one group at a time
-                return Load_Data_From_Database(group)
-                    .then(function (group_members) {
-                        return _.groupBy(group_members, 'category_id');
+                return loadPlayerInterestDetails(group) // Returns players in a group
+                    .then(function (groupMembers) {
+                        return _.groupBy(groupMembers, 'category_id'); // Groups players in a group by game category id
                     })
-                    .then(function (sorted_by_categories) { // categorize according to group, category
-                        var categories = Object.values(sorted_by_categories)
+                    .then(function (sortedByCategories) { // categorize according to group, category
+                        // Registered Category IDs
+                        const categories = Object.values(sortedByCategories);
                         return _.map(categories, function (category) {
-                            return _.groupBy(category, 'gender')
-                        })
+                            // Groups players of a specific category, in a group by gender
+                            return _.groupBy(category, 'gender');
+                        });
                     })
-                    .then(function (sorted_by_gender) { //categorize according to group, category, gender                
-                        let players = _.map(sorted_by_gender, (gender_Categories) => {
-                            return _.map(gender_Categories, function (players) {
+                    // Categorized according to group, category, gender
+                    .then(function (sortedByGender) {
+                        const playersGroup = _.map(sortedByGender, (genderCategories) => {
+                            return _.map(genderCategories, function (players) {
                                 return players;
-                            })
+                            });
                         });
-                        return Promise.each(players, function (plrs) {
-                            return Promise.each(plrs, function (plr) {
-                                return Make_Matches(plr);
-                            })
+                        return Promise.each(playersGroup, function (playersGrp) {
+                            return Promise.each(playersGrp, function (players) {
+                                return makeTeams(players); // Makes player teams
+                            });
                         });
-                    })
-            })
-        })
+                    });
+            });
+        });
 }
 
 
 /**
- * 
- * @param {*} players 
+ * Makes Player Teams according to gender, category, group
+ * @param {*} players
  */
-function Make_Matches(players) {
-    let index = 0;
-    let player_count = players.length;
-    let Category_ID = players[0].category_id;
-    let Team_Capacity = (_.pick((_.find(Category_Info, { category_id: Category_ID })), 'no_of_players'))['no_of_players']
-    if (player_count < 2 * Team_Capacity) {
+function makeTeams(players) {
+    const playersCount = players.length;
+    const categoryID = players[0].category_id;
+    // Get team capacity according to category
+    const teamCapacity = (_.pick((_.find(categoryInfo, { category_id: categoryID })), 'no_of_players'))['no_of_players'];
+    if (playersCount < 2 * teamCapacity) { // If single player is available, then reject
         return 0;
     }
-    let extra_Players = player_count % (2 * Team_Capacity)
-    if (extra_Players != 0) {
-        players.splice(players.length - extra_Players);
+    const extraPlayers = playersCount % (2 * teamCapacity);
+    if (extraPlayers !== 0) {
+        players.splice(players.length - extraPlayers);
     }
-    let Chunks_Of_Teams = _.chunk(players, Team_Capacity)
-    return Promise.each(Chunks_Of_Teams, function (team) {
-        return Fill_Team_Details(team, Team_Capacity, Category_ID)
-    })
-
+    const chunksOfTeams = _.chunk(players, teamCapacity);  // Divide into teams
+    return Promise.each(chunksOfTeams, function (team) {
+        return fillTeamDetailsQuery(team, teamCapacity, categoryID);
+    });
 }
 
-function Fill_Team_Details(team_players, Team_Capacity, Category_ID) {
-    if (team_players.length != Team_Capacity) {
+ // Form insert Query for team_details and player_team_details tables
+function fillTeamDetailsQuery(teamPlayers, teamCapacity, categoryID) {
+    if (teamPlayers.length !== teamCapacity) {
         return 0;
     }
-    Team_Id++;
-    let player_ids = team_players.map(a => a.player_id)
-    team_details_insert_query = team_details_insert_query.concat(",(" + Team_Id + ")");
-    return Promise.each(player_ids, function (Player_ID) {
-        return player_team_details_insert_query = player_team_details_insert_query.concat(",", "(" + Team_Id + "," + Player_ID + "," + Category_ID + ")");
-    })
-
+    teamID++;
+    const playerIDs = teamPlayers.map(a => a.player_id);
+    teamDetailsInsertQuery = teamDetailsInsertQuery.concat(',(' + teamID + ')');
+    return Promise.each(playerIDs, function (playerID) {
+        playerTeamDetailsInsertQuery = playerTeamDetailsInsertQuery.concat(',', '(' + teamID + ',' + playerID + ',' + categoryID + ')');
+        return playerTeamDetailsInsertQuery;
+    });
 }
 
-function Load_Data_From_Database(group) {
+function loadPlayerInterestDetails(group) {
     return knex.from('interest_details')
         .innerJoin('player_details', 'interest_details.player_id', 'player_details.player_id')
         .select('interest_details.player_id', 'group_id', 'game_id', 'category_id', 'gender')
-        .where('group_id', group)
+        .where('group_id', group);
 }
 
-function Category_Details() {
-    return knex.raw("delete from player_team_details").then(() => {
+function categoryDetails() {
+    return knex.raw('delete from player_team_details').then(() => {
         return Promise.all([
-            knex.raw("delete from match_details"),
-            knex.raw("ALTER SEQUENCE match_details_match_id_seq RESTART WITH 1"),
-            knex.raw("delete from team_details")
-        ])
+            knex.raw('delete from match_details'),
+            knex.raw('ALTER SEQUENCE match_details_match_id_seq RESTART WITH 1'),
+            knex.raw('delete from team_details')
+        ]);
     }).then(() => {
         return knex.from('game_category_details')
             .select().then(function (n) {
-                Category_Info = n;
-            })
-    })
+                categoryInfo = n;
+            });
+    });
 }
 
-function Insert_Player_Team_Details() {
-    team_details_insert_query = _.replace(team_details_insert_query, ',', '')
-    player_team_details_insert_query = _.replace(player_team_details_insert_query, ',', '')
-    return knex.raw(team_details_insert_query)
+function insertIntoPlayerTeamDetails() {
+    // Remove the extra ',' between "values" and "("
+    teamDetailsInsertQuery = _.replace(teamDetailsInsertQuery, ',', '');
+    playerTeamDetailsInsertQuery = _.replace(playerTeamDetailsInsertQuery, ',', '');
+    return knex.raw(teamDetailsInsertQuery)
         .then(() => {
-            return knex.raw(player_team_details_insert_query)
-        })
+            return knex.raw(playerTeamDetailsInsertQuery);
+        });
 }
 
-function Fill_Match_Details() {
-    return Load_Team_Details_Data()
-        .then(function (data) {
-            let matches = _.uniq(data.map(data => data.category_id))
-            return _.map(matches, function (match) {
-                var filter = _.filter(data, ['category_id', match])
-                var teams = _.uniq(filter.map(filter => filter.team_id))            
-            for(index=0;index<teams.length;)
-            {
-                query1 = query1.concat(",(" + match + "," + teams[index++] + "," + teams[index++], ")");
-            }
-            })
-        })
+function fillMatchDetailsQuery() {
+    return loadTeamDetailsData() // Fetch records from team_details table
+        .then(function (teamDetails) {
+            const categoryIDs = _.uniq(teamDetails.map(teamDetails => teamDetails.category_id));
+            return _.map(categoryIDs, function (categoryID) {
+                const categoryGroup = _.filter(teamDetails, ['category_id', categoryID]);
+                const teams = _.uniq(categoryGroup.map(categoryGroup => categoryGroup.team_id));
+                let index;
+                for (index = 0; index < teams.length;) {
+                    query1 = query1.concat(',(' + categoryID + ',' + teams[index++] + ',' + teams[index++], ')');
+                }
+            });
+        });
 }
 
-function Insert_Match_Details() {
-    query = query.concat(_.replace(query1, ',', ''))
-    return knex.raw(query)
+function insertIntoMatchDetails() {
+    query = query.concat(_.replace(query1, ',', ''));
+    return knex.raw(query);
 }
 
-function Load_Team_Details_Data() {
-    return knex.select().from('player_team_details')
-
+function loadTeamDetailsData() {
+    return knex.select().from('player_team_details');
 }
