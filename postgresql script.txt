@@ -1,0 +1,47 @@
+delete from match_details;
+delete from player_team_details;
+delete from team_details;
+delete from interest_details;
+delete from player_details;
+
+insert into player_details values(1,'P1','some email','23424567','password',1,'F','member'),
+(2,'P2','some email','23424567','password',1,'F','member'),
+(3,'P3','some email','23424567','password',1,'F','member'),
+(4,'P4','some email','23424567','password',1,'F','member'),
+(5,'P4','some email','23424567','password',1,'F','member'),
+(6,'P4','some email','23424567','password',1,'M','member'),
+(7,'P4','some email','23424567','password',1,'M','member'),
+(8,'P4','some email','23424567','password',1,'M','member'),
+(9,'P4','some email','23424567','password',1,'M','member'),
+(11,'P1','some email','23424567','password',2,'F','member'),
+(12,'P2','some email','23424567','password',2,'F','member'),
+(13,'P3','some email','23424567','password',2,'F','member'),
+(14,'P4','some email','23424567','password',2,'F','member'),
+(15,'P4','some email','23424567','password',2,'F','member'),
+(16,'P4','some email','23424567','password',2,'M','member'),
+(17,'P4','some email','23424567','password',2,'M','member'),
+(18,'P4','some email','23424567','password',2,'M','member'),
+(19,'P4','some email','23424567','password',2,'M','member');
+
+insert into interest_details values(1,1,11),
+(2,1,12),
+(3,1,12),
+(4,1,12),
+(5,1,12),
+(6,1,11),
+(7,1,11),
+(8,1,11),
+(9,1,11),
+(11,2,21),
+(12,2,22),
+(13,2,22),
+(14,2,22),
+(15,2,22),
+(16,2,21),
+(17,2,21),
+(18,2,21),
+(19,2,21);
+
+select * from team_details;
+select * from player_team_details;
+select * from match_details;

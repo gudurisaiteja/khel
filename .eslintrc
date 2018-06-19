@@ -1,8 +1,15 @@
 {
   "rules": {
+    "func-names":0,
+    "prefer-template":"off",
+    "arrow-body-style":"off",
+    "prefer-arrow-callback":"off",
+    "no-plusplus":"off",
+    "dot-notation":"off",
+    "no-shadow":"warn",
     "indent": [
       2,
-      2,
+      4,
       {
         "SwitchCase": 1
       }
