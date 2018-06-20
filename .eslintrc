@@ -7,6 +7,9 @@
     "no-plusplus":"off",
     "dot-notation":"off",
     "no-shadow":"warn",
+    "linebreak-style":"off",
+  // "linebreak-style": ["error", "windows"],
+  "no-unused-vars":"off",
     "indent": [
       2,
       4,
