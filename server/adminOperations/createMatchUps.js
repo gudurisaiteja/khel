@@ -1,10 +1,13 @@
-const dbconn = require('C:/Users/akhilesh.kura/express-mongoose-es6-rest-api/server/user/Dbconn.js');
+const dbconn = require('/home/ggk/Documents/projects/khel/server/user/Dbconn.js');
 var knexinst = dbconn.knexinst;
 var bookshelf = require('bookshelf')(knexinst);
 let _ = require('lodash');
 let shuffle = require('shuffle-array');
 //var collections=require('collectionsjs');
-
+let Promise = require('bluebird');
+let teamList = [];
+let teamDetails = [];
+let matchDetails = [];
 
 var match_up = function (categoryid) {
     // getAllGroupIds()
@@ -17,11 +20,10 @@ var match_up = function (categoryid) {
         .then(function (data) {
             //numberOfPlayers = data;
             //Retriving no.of.players and game id for the given categoryid and retrieving groups
-            console.log('data', data);
-
+            //console.log('data', data);
             number_of_players = data.no_of_players;
             game_id = data.game_id;
-            console.log(game_id);
+            //console.log(game_id);
             return getAllGroupIds();
         })
         .map(function (group) {
@@ -48,87 +50,154 @@ var match_up = function (categoryid) {
             console.log('playersOrderedInGroup after shuffle:', data);
             playersOrderedInGroup = data;
 
-            // for (var i = 0; i < playersOrderedInGroup.length; i++) {
-                playersOrderedInGroup.map(function name(playersInGroup) {
-                    if (playersInGroup.length > number_of_players) {
-                        makeGroupMatchUps(playersInGroup, number_of_players)
-                            .then(function (data) {
-                                console.log('');
-        
-        
-                            })
-                    }
-                    else{
-        
-                        /* against groups logic */
-                    }
-                })
-           
-            //}
+
+            return Promise.map(playersOrderedInGroup,function (playersInGroup) {
+                if (playersInGroup.length > number_of_players) {
+                    return makeGroupMatchUps(playersInGroup, number_of_players)
+                        .then(function (data) {
+                            console.log('');
 
 
+                        })
+                }
+                else {
 
-        });
-}
-
-var makeGroupMatchUps = function (playersInGroup, number_of_players) {
-    let Matched = 1;
-    let currentMatchId;
-    let team_id;
-    return getMaxMatchId(playersInGroup[0].category_id)
-        .then(function (max_id) {
-            currentMatchId = max_id + 1;
-            return getMaxTeamId();
-
-        })
-        .then(function(max_team_id){
-            current_team_id=max_team_id+1;
-            Matched=0;
-            let team_id1=0,team_id2=0;
-
-            Promise.map(_.chunk(playersInGroup,number_of_players*2),function(data){
-                            _.chunk(data,no_of_players,function(teams){
-                              teams[0].map(insertIntoTeamDetails({team_id:current_team_id, player_id: playersInGroup[j].player_id }))
-                            })
-
+                    /* against groups logic */
+                }
             })
 
-            for(let i = 0; i < playersInGroup.length; i = i + number_of_players) {
-             
+
+        });
+}
+
+var makeGroupMatchUps = function ( , number_of_players) {
+    let Matched = 0;
+    let currentMatchId;
+    let stage = 0;
+    let team_id;
+    let team_id1 = 0, team_id2 = 0;
+    //console.log('in makegroupids');
+   
+    let current_team_id;
+
+    return getMaxMatchId(playersInGroup[0].category_id)
+        .then(function (max_id) {
+            if (max_id.length != 0) {
+                currentMatchId = parseInt(max_id[0]) + 1;
+            }
+            else { currentMatchId = 1 }
+            console.log('currentMatchId:', currentMatchId);
+            
+            return getMaxTeamId(playersInGroup[0].category_id);
+
+
+        })
+        
+        .then(function (max_team_id) {
+            //console.log(typeof max_team_id);
+
+            current_team_id = parseInt(max_team_id);
+            
+
+            console.log('current_team_id:', current_team_id);
+            return getMaxStage(playersInGroup[0].category_id)
+
+        })
+        .then(function (data) {
+             stage=data;
+            for (let i = 0; i < playersInGroup.length; i = i + number_of_players) {
+
+                teamList.push({
+                    team_id: current_team_id,
+                    category_id: playersInGroup[0].category_id
+                });
+
+                
                 for (let j = i; j < i + number_of_players; j++) {
-                     
-                     insertIntoTeamDetails({team_id:current_team_id, player_id: playersInGroup[j].player_id });
-                     if(team_id1==0){ team_id1=current_team_id; }
-                     else if (team_id2==0){ team_id2=current_team_id; }
+                
+                    //insertIntoTeamDetails({ team_id: current_team_id, player_id: playersInGroup[j].player_id });
+                   
+                    teamDetails.push({
+                        team_id: current_team_id,
+                        player_id: playersInGroup[j].player_id
+                    });
+
+                    if (team_id1 == 0) 
+                    { team_id1 = current_team_id; }
+                    else if (team_id2 == 0) { team_id2 = current_team_id; }
 
                 }
-               if(Matched==0){ current_team_id=current_team_id+1 }
-               else{
-                insertIntoMatchDetails(currentMatchId,playersInGroup[i].category_id,team_id1,team_id2,Date.now(),'NA',getMaxStage(category_id)+1);
-                Matched=1;
-               }
-              
-              
-               
+                if (Matched == 0) {
+                    Matched=1;
+                    current_team_id = current_team_id + 1;
+                    
+                    console.log('in if');
+
+                }
+                else {
+                    //insertIntoMatchDetails(currentMatchId, playersInGroup[i].category_id, team_id1, team_id2, Date.now(), 'NA', getMaxStage(category_id) + 1);
+                    matchDetails.push({
+                        match_id: currentMatchId,
+                        category_id: playersInGroup[0].category_id,
+                        team1_id: team_id1,
+                        team2_id: team_id2,
+                        stage:stage,
+                        date_and_time: new Date(),
+                        result:0
+                    });
+
+                    Matched = 0;
+                    current_team_id=current_team_id+1;
+                    currentMatchId=currentMatchId+1;
+                    console.log('teamList',teamList);
+                    console.log('teamDetails',teamDetails);
+                    console.log('matchDetails',matchDetails);
+                    team_id1=0;
+                    team_id2=0;
+                    return insertRecordsIntoDb();
+                }
+
+
+
             }
+            return;
+        
+        })
+      
+   
+
+}
+
+let getMaxStage = function (category_id) {
+
+    return knexinst('match_details')
+        .max('stage')
+        .where('category_id', category_id)
+        .then(function(data){
+           console.log('getmaxstage',data);
+           if(data[0].max==null){return 1; }
+           else{ return data[0].max }
+
+        });
+}
+
+let insertIntoMatchDetails = function (details) {
+    return knexinst('match_details').insert(details);
+
+}
+let insertIntoTeamsList = function (details) {
+    return knexinst('teams_list')
+        .insert(details)
+        .then(() => {
+            console.log('team inserted');
         });
 
-}
-let getMaxStage=function(category_id){
-
- return knexinst('match_details')
- .max('stage')
- .where('category_id',category_id);
-}
-let insertIntoMatchDetails=function(details){
-    knexinst('match_details').insert(details);
 
 }
+let insertIntoTeamDetails = function (teamDetails) {
 
-let insertIntoTeamDetails=function(teamDetails){
-
-    knexinst('team_details')
-    .insert(teamDetails);
+    return knexinst('team_details')
+        .insert(teamDetails);
 
 }
 let getMaxMatchId = function (category_id) {
@@ -140,19 +209,27 @@ let getMaxMatchId = function (category_id) {
         .where('category_id', category_id)
 
 
-    // .then(function (data) {
-    //     console.log('in getmaxid,,data', data);
-    //     return data;
-    // })
+        .then(function (data) {
+            console.log('in getmaxid,,data', data);
+            return data;
+        })
 
 
 }
-let getMaxTeamId = function () {
+let getMaxTeamId = function (category_id) {
 
 
-    return knexinst('team_details')
+    return knexinst('teams_list')
         .max('team_id')
-   
+        .where('category_id', category_id)
+        .then(function (data) {
+
+            if (data[0].max == null) {
+                return 1;
+            }
+            else { return data[0].max; }
+        });
+
 
 
 }
@@ -176,6 +253,35 @@ var getAllGroupIds = function () {
         .select('group_id');
 };
 
+
+var insertRecordsIntoDb=function(){
+
+   return Promise.all([
+       Promise.map(teamList,function(team){
+                return insertIntoTeamsList(team);
+       }),
+       Promise.map(teamDetails,function(team){
+                return insertIntoTeamDetails(team);
+       }),
+       Promise.map(matchDetails,function(match){
+           return insertIntoMatchDetails(match);
+       })
+
+   ])
+   .then(function(data){
+       console.log('inserted all arrays');
+       
+        matchDetails=[];
+        teamDetails=[];
+        teamList=[];
+        console.log('emptied');
+        
+   })
+}
+
+
+
+
 var removePlayers = function (playersList, no_of_players) {
 
     var toRemove
@@ -194,8 +300,7 @@ var removePlayers = function (playersList, no_of_players) {
 
 
 }
-/**
- * 
+/** 
  * @param {*} group_id 
  * @param {*} game_id 
  */
@@ -215,36 +320,15 @@ let getPlayerInterestDetailsByGameIdAndGroupId = function (category_id, group_id
  * 
  * @param {*} array 
  */
+
 let shuffleArray = function (array) {
     console.log('shuffle');
     return shuffle(array);
 };
 
 match_up(11);
-
-
-/*
-Worked on Schedule Algorithm 
-   -fetched the required dat aaccording to groups
-
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// getMaxStage(12);
+// console.log(new Date());
 
 /*
 
